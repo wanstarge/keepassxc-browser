@@ -6,7 +6,7 @@
 
 - 扩展名称：KeePassXC-Browser (wanstarge fork)，属于非官方分支。
 - 独立 ID：`keepassxc-browser-scrollfix@wanxingge.site`。首次 AMO 接受后保持不变；后续版本在同一个扩展条目下提交。
-- 初始个人版本：`1.10.4.1001`。这是基于上游 `1.10.4.1` 的个人版本号；下一次使用 `1.10.4.1002`，不能重复提交同一个版本号。更新上游基线时重新选择大于已发布版本的号码。
+- 当前个人版本：`1.10.4.1002`。这是基于上游 `1.10.4.1` 的个人版本号；1001 是首次打包验证版本，1002 统一了文本换行。下一次使用 `1.10.4.1003`，不能重复提交同一个版本号。更新上游基线时重新选择大于已发布版本的号码。
 - 运行范围：Firefox 142+，使用内置数据许可界面。向本地 KeePassXC 传输认证信息、网页活动和网页内容，因此没有声明 `none`。
 - 使用 Mozilla 自行分发签名（unlisted），当前采用手动安装更新，未配置自动更新服务器。Firefox 正式版不接受自己生成证书的“自签名”。
 
@@ -25,11 +25,11 @@ git switch personal/firefox-signed
 默认输出：
 
 - `build/firefox-personal`：个人版解压目录，含独立 ID。
-- `build/keepassxc-browser-personal-1.10.4.1001.zip`：提交给 AMO 的未签名包。
-- `build/keepassxc-browser-personal-1.10.4.1001-source.zip`：Git HEAD 的源码包，不含本地报告、node_modules、账号及密钥。
+- `build/keepassxc-browser-personal-1.10.4.1002.zip`：提交给 AMO 的未签名包。
+- `build/keepassxc-browser-personal-1.10.4.1002-source.zip`：Git HEAD 的源码包，不含本地报告、node_modules、账号及密钥。
 - 同名前缀的 `-build.json`：提交号、工作区是否干净及两个压缩包的 SHA-256。
 
-提交前先 commit 并重新生成，确认 build.json 的 `workingTreeClean` 为 true。ZIP 时间戳可能不同；源码文件及清单应一致。可以覆盖版本号试打包，但正式发布应先更新 JSON 配置并提交。
+提交前先 commit 并重新生成，确认 build.json 的 `workingTreeClean` 为 true。输出中的文本统一为 UTF-8/LF，避免 Git 的 Windows 换行转换影响复现。ZIP 时间戳可能不同；解压后的文件内容及清单应一致。可以覆盖版本号试打包，但正式发布应先更新 JSON 配置并提交。
 
 ```powershell
 npx --yes web-ext@10 lint --source-dir build/firefox-personal --output json

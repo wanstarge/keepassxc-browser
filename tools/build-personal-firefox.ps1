@@ -34,11 +34,19 @@ $taskManifest.PSObject.Properties.Remove('update_url')
 $taskManifestText = ($taskManifest | ConvertTo-Json -Depth 30) + "`n"
 [IO.File]::WriteAllText((Join-Path $taskOutput 'manifest.json'), $taskManifestText, [Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath (Join-Path $taskRoot 'LICENSE') -Destination (Join-Path $taskOutput 'LICENSE')
+# Git checkouts can have CRLF while source archives have LF. Make text output portable.
+$taskTextExtensions = @('.js', '.json', '.css', '.html', '.svg')
+Get-ChildItem -LiteralPath $taskOutput -Recurse -File | Where-Object {
+    $_.Name -eq 'LICENSE' -or $_.Extension -in $taskTextExtensions
+} | ForEach-Object {
+    $taskText = [IO.File]::ReadAllText($_.FullName).Replace("`r`n", "`n")
+    [IO.File]::WriteAllText($_.FullName, $taskText, [Text.UTF8Encoding]::new($false))
+}
 if (Test-Path $taskArchive) { Remove-Item -LiteralPath $taskArchive }
 Compress-Archive -Path (Join-Path $taskOutput '*') -DestinationPath $taskArchive
 $taskCommit = (& git -C $taskRoot rev-parse HEAD).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the source commit.' }
-$taskChanges = @(& git -C $taskRoot status --porcelain --untracked-files=normal)
+$taskChanges = @(& git -C $taskRoot status --porcelain --untracked-files=normal -- . ':(exclude)build')
 if ($LASTEXITCODE -ne 0) { throw 'Cannot check source status.' }
 # Archive only committed source; local reports, node_modules and credentials are never included.
 $taskSourceArchive = Join-Path $taskBuildRoot "keepassxc-browser-personal-$Version-source.zip"

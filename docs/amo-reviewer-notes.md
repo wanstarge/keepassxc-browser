@@ -10,7 +10,7 @@ Requirements: Git and PowerShell 7 (pwsh), on Windows or another system supporte
 pwsh -File tools/build-personal-firefox.ps1
 ```
 
-Git metadata is required for the script's source archive and build record steps. When starting from the source ZIP, first initialize a local repository and commit the extracted files (`git init`, `git add .`, `git -c user.name=Reviewer -c user.email=reviewer@example.invalid commit -m Source`). The commit identifier/build record then differs from the publisher's, but the extension files are reproduced from the same sources. Compare the unpacked extension files rather than ZIP timestamps.
+Git metadata is required for the script's source archive and build record steps. When starting from the source ZIP, first initialize a local repository and commit the extracted files (`git init`, `git add .`, `git -c user.name=Reviewer -c user.email=reviewer@example.invalid commit -m Source`). The commit identifier/build record then differs from the publisher's, but the extension files are reproduced from the same sources. Compare the unpacked extension files rather than ZIP timestamps. The build normalizes UTF-8 JS/JSON/CSS/HTML/SVG and LICENSE to LF line endings so Git checkout settings do not change those files.
 
 The script copies `keepassxc-browser/`, replaces manifest.json using `dist/manifest_firefox.json` and `tools/firefox-personal.json`, and adds LICENSE. It changes the display name, version, homepage, independent Gecko ID, Firefox minimum version (142), and the data transmission declaration. It removes legacy `applications` in favor of `browser_specific_settings`. It adds no remote code, telemetry, diagnostic scripts or custom update server.
 
@@ -30,7 +30,7 @@ These files are inherited from upstream. Publisher verification compared their b
 | --- | --- | --- |
 | background/nacl.min.js | tweetnacl 1.0.3 | Exact byte match |
 | background/nacl-util.min.js | tweetnacl-util 0.15.0 | Exact byte match |
-| common/browser-polyfill.min.js | webextension-polyfill 0.12.0 | Same content after normalizing line endings |
+| common/browser-polyfill.min.js | webextension-polyfill 0.12.0 | Original content; output uses LF line endings |
 | bootstrap/bootstrap.min.js | Bootstrap 5.3.2 | Same content after normalizing line endings and removing the trailing sourceMappingURL comment |
 
 Original releases and readable source:
