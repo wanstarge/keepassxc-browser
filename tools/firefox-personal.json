@@ -1,0 +1,7 @@
+{
+  "id": "keepassxc-browser-scrollfix@wanxingge.site",
+  "name": "KeePassXC-Browser (wanstarge fork)",
+  "version": "1.10.4.1001",
+  "homepage_url": "https://github.com/wanstarge/keepassxc-browser/tree/personal/firefox-signed",
+  "strict_min_version": "142.0"
+}
