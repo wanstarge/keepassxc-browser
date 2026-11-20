@@ -16,7 +16,9 @@ The script copies `keepassxc-browser/`, replaces manifest.json using `dist/manif
 
 ## Functional changes
 
-Relative to upstream commit fab74af89765875e2104003374465374b19a2eff, only `content/autocomplete.js` and `content/fields.js` contain functional changes: constrain credential menus to the available viewport and keep compact keyboard selection visible; prevent repeated icon creation for the same segmented TOTP field. Regression tests are outside the extension package. Development used generative AI assistance.
+Relative to upstream commit fab74af89765875e2104003374465374b19a2eff, functional changes are limited to `content/autocomplete.js`, `content/fields.js` and `content/icon-handler.js`: constrain credential menus to the available viewport and keep compact keyboard selection visible; prevent repeated segmented TOTP icons; and, in personal version 1.10.4.1003, reject icon creation for fields that already have an icon. The last change prevents the ordinary single-input OTP MutationObserver feedback loop while preserving OTP field recognition. Version 1002's guard covered segmented fields only. Regression tests are outside the extension package. Development used generative AI assistance.
+
+Version 1003 validation: 24 OTP regression checks passed across Playwright Chromium and Firefox; the full suite passed 82 tests with 2 existing skips. New checks reproduced 14 failures before the creation guard, then passed after it. Cases include a single input behind six visual slots, id-based OTP detection, multiple ordinary OTP fields, repeated/overlapping initialization, bounded real-observer feedback, icons disabled, and cleanup/recreation after hiding a field. The reporter confirmed Poke stopped freezing with OTP icons disabled in 1002; the new version still requires a real-site retest. Synthetic tests use no personal database, account or verification code.
 
 ## Data and native application
 

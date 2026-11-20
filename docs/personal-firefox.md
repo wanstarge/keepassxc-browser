@@ -1,12 +1,12 @@
 # 自用 Firefox 版本维护
 
-维护分支：`personal/firefox-signed`。两个功能修复及测试单独留在 `fix/autocomplete-viewport` 的一个提交中，上游 PR 不包含本目录和个人打包配置。
+维护分支：`personal/firefox-signed`。首轮两个功能修复及测试留在 `fix/autocomplete-viewport` 的一个提交中；该上游 PR 已关闭、未合并。后续普通 OTP 图标修复在个人维护分支继续，不再次提交上游代码 PR。
 
 ## 固定身份与版本
 
 - 扩展名称：KeePassXC-Browser (wanstarge fork)，属于非官方分支。
 - 独立 ID：`keepassxc-browser-scrollfix@wanxingge.site`。首次 AMO 接受后保持不变；后续版本在同一个扩展条目下提交。
-- 当前个人版本：`1.10.4.1002`。这是基于上游 `1.10.4.1` 的个人版本号；1001 是首次打包验证版本，1002 统一了文本换行。下一次使用 `1.10.4.1003`，不能重复提交同一个版本号。更新上游基线时重新选择大于已发布版本的号码。
+- 当前个人候选版本：`1.10.4.1003`。这是基于上游 `1.10.4.1` 的个人版本号；1001 是首次打包验证版本，1002 统一了文本换行，1003 在图标创建入口去重，补齐普通单 OTP 输入框的循环修复。签名/安装结果以实际回执为准。下一次使用 `1.10.4.1004`，不能重复提交同一个版本号。更新上游基线时重新选择大于已发布版本的号码。
 - 运行范围：Firefox 142+，使用内置数据许可界面。向本地 KeePassXC 传输认证信息、网页活动和网页内容，因此没有声明 `none`。
 - 使用 Mozilla 自行分发签名（unlisted），当前采用手动安装更新，未配置自动更新服务器。Firefox 正式版不接受自己生成证书的“自签名”。
 
@@ -25,8 +25,8 @@ git switch personal/firefox-signed
 默认输出：
 
 - `build/firefox-personal`：个人版解压目录，含独立 ID。
-- `build/keepassxc-browser-personal-1.10.4.1002.zip`：提交给 AMO 的未签名包。
-- `build/keepassxc-browser-personal-1.10.4.1002-source.zip`：Git HEAD 的源码包，不含本地报告、node_modules、账号及密钥。
+- `build/keepassxc-browser-personal-1.10.4.1003.zip`：提交给 AMO 的未签名包。
+- `build/keepassxc-browser-personal-1.10.4.1003-source.zip`：Git HEAD 的源码包，不含本地报告、node_modules、账号及密钥。
 - 同名前缀的 `-build.json`：提交号、工作区是否干净及两个压缩包的 SHA-256。
 
 提交前先 commit 并重新生成，确认 build.json 的 `workingTreeClean` 为 true。输出中的文本统一为 UTF-8/LF，避免 Git 的 Windows 换行转换影响复现。ZIP 时间戳可能不同；解压后的文件内容及清单应一致。可以覆盖版本号试打包，但正式发布应先更新 JSON 配置并提交。
@@ -35,7 +35,7 @@ git switch personal/firefox-signed
 npx --yes web-ext@10 lint --source-dir build/firefox-personal --output json
 ```
 
-当前代码完整测试为 66 项通过、2 项原有跳过。打包配置变化只需要校验生成清单、资源、源文件一致性和 AMO lint；修改功能代码时再运行相应测试及完整必要检查。
+1003 候选的完整测试为 82 项通过、2 项原有跳过。OTP 测试覆盖单框、视觉六格背后的单框、多个普通 OTP 框、分段字段、真实 observer 收敛、重复/重叠初始化、关闭图标和隐藏后重建；这些是隔离测试，不能代替真实网站复测。打包配置变化只需要校验生成清单、资源、源文件一致性和 AMO lint；修改功能代码时再运行相应测试及完整必要检查。
 
 ## 网页签名与安装
 

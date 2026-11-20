@@ -11,12 +11,12 @@ const initCombinations = main.slice(main.indexOf('kpxc.initCombinations ='),
 const formHelpers = main.slice(main.indexOf('kpxc.getDocumentLocation ='),
     main.indexOf('// Returns form action URL'));
 
-async function setup(page, type) {
+async function setup(page, type, markup = null) {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setContent(`<style>input { width: 36px; height: 36px; margin: 4px; }</style>
-        <form>${Array.from({ length: 6 }, (_, i) =>
-        `<input id="digit-${i}" type="${type}" inputmode="numeric" pattern="[0-9]*" maxlength="1">`).join('')}</form>`);
+        ${markup ?? `<form>${Array.from({ length: 6 }, (_, i) =>
+        `<input id="digit-${i}" type="${type}" inputmode="numeric" pattern="[0-9]*" maxlength="1">`).join('')}</form>`}`);
     await page.addScriptTag({ content: `
         const browser = { i18n: { getMessage: value => value }, runtime: {
             sendMessage: async () => undefined,
@@ -124,3 +124,157 @@ for (const type of [ 'text', 'tel' ]) {
         }
     });
 }
+
+const ordinaryFixtures = [
+    {
+        name: 'one input behind six visual OTP slots',
+        markup: '<input type="text" autocomplete="one-time-code" data-input-otp maxlength="6" style="width:220px">'
+            + '<span aria-hidden="true">□ □ □ □ □ □</span>',
+        count: 1,
+    },
+    {
+        name: 'OTP identified by id without autocomplete',
+        markup: '<input id="verification-code" type="tel" maxlength="6" style="width:220px">',
+        count: 1,
+    },
+    {
+        name: 'four ordinary OTP inputs',
+        markup: Array.from({ length: 4 }, (_, i) =>
+            `<input id="otp-${i}" type="text" autocomplete="one-time-code" maxlength="6" style="width:220px">`).join(''),
+        count: 4,
+    },
+];
+
+for (const fixture of ordinaryFixtures) {
+    test(`ordinary OTP rescans preserve combinations without duplicate icons (${fixture.name})`, async ({ page }) => {
+        const errors = await setup(page, 'text', `<form>${fixture.markup}</form>`);
+        try {
+            const result = await page.evaluate(async () => {
+                const inputs = Array.from(document.querySelectorAll('input'));
+                const preserved = [];
+                for (let i = 0; i < 10; ++i) {
+                    await kpxc.initCombinations(inputs);
+                    await kpxcIcons.initIcons(kpxc.combinations);
+                    const combinations = await kpxcFields.getAllCombinations(inputs);
+                    preserved.push(combinations.length === inputs.length
+                        && combinations.every((c, index) => c.totp === inputs[index] && !c.username && !c.password));
+                }
+                // Async callers may overlap; icon creation must still be idempotent.
+                await Promise.all(Array.from({ length: 10 }, () => kpxcIcons.initIcons(kpxc.combinations)));
+                return { ...window.totpStats(), preserved };
+            });
+            expect(errors).toEqual([]);
+            expect(result.preserved).toEqual(Array(10).fill(true));
+            expect(result.icons).toBe(fixture.count);
+            expect(result.descriptors).toBe(fixture.count);
+            expect(result.wrappers).toBe(fixture.count);
+            expect(result.combinations).toBe(fixture.count);
+            expect(result.empty).toBe(true);
+        } finally {
+            await page.evaluate(() => window.stopTotp());
+        }
+    });
+
+    test(`mounting ordinary OTP fields settles under the real observer (${fixture.name})`, async ({ page }) => {
+        const errors = await setup(page, 'text', `<form></form><template>${fixture.markup}</template>`);
+        try {
+            const result = await page.evaluate(async () => {
+                let detections = 0;
+                let bounded = false;
+                const original = kpxcFields.getAllCombinations;
+                kpxcFields.getAllCombinations = async function(inputs) {
+                    if (++detections >= 20) {
+                        bounded = true;
+                        kpxc.observer.disconnect();
+                    }
+                    return original(inputs);
+                };
+                await kpxcObserverHelper.initObserver();
+                document.querySelector('form').append(document.querySelector('template').content.cloneNode(true));
+                await new Promise(resolve => setTimeout(resolve, 150));
+                const settledDetections = detections;
+                await new Promise(resolve => setTimeout(resolve, 150));
+                kpxc.observer.disconnect();
+                kpxcFields.getAllCombinations = original;
+                const inputs = Array.from(document.querySelectorAll('input'));
+                const combinations = await kpxcFields.getAllCombinations(inputs);
+                return { ...window.totpStats(), detections, settledDetections, bounded,
+                    preserved: combinations.length === inputs.length
+                        && combinations.every((c, index) => c.totp === inputs[index]),
+                };
+            });
+            expect(errors).toEqual([]);
+            expect(result.bounded).toBe(false);
+            expect(result.detections).toBeGreaterThanOrEqual(2);
+            expect(result.detections).toBeLessThan(20);
+            expect(result.detections).toBe(result.settledDetections);
+            expect(result.icons).toBe(fixture.count);
+            expect(result.descriptors).toBe(fixture.count);
+            expect(result.wrappers).toBe(fixture.count);
+            expect(result.combinations).toBe(fixture.count);
+            expect(result.preserved).toBe(true);
+            expect(result.empty).toBe(true);
+        } finally {
+            await page.evaluate(() => window.stopTotp());
+        }
+    });
+}
+
+test('ordinary OTP recognition remains available with OTP icons disabled', async ({ page }) => {
+    const errors = await setup(page, 'text', `<form>${ordinaryFixtures[0].markup}</form>`);
+    try {
+        const result = await page.evaluate(async () => {
+            kpxc.settings.showOTPIcon = false;
+            const inputs = Array.from(document.querySelectorAll('input'));
+            for (let i = 0; i < 10; ++i) {
+                await kpxc.initCombinations(inputs);
+                await kpxcIcons.initIcons(kpxc.combinations);
+            }
+            return { ...window.totpStats(), recognized: kpxc.combinations[0]?.totp === inputs[0] };
+        });
+        expect(errors).toEqual([]);
+        expect(result.recognized).toBe(true);
+        expect(result.combinations).toBe(1);
+        expect(result.icons).toBe(0);
+        expect(result.descriptors).toBe(0);
+        expect(result.wrappers).toBe(0);
+        expect(result.empty).toBe(true);
+    } finally {
+        await page.evaluate(() => window.stopTotp());
+    }
+});
+
+test('a hidden ordinary OTP icon can be cleaned up and recreated when its field returns', async ({ page }) => {
+    const errors = await setup(page, 'text', `<form>${ordinaryFixtures[0].markup}</form>`);
+    try {
+        const result = await page.evaluate(async () => {
+            const input = document.querySelector('input');
+            await kpxc.initCombinations([ input ]);
+            await kpxcIcons.initIcons(kpxc.combinations);
+            const before = window.totpStats();
+            input.style.display = 'none';
+            kpxcIcons.deleteAllHiddenIcons();
+            const hidden = window.totpStats();
+            input.style.display = '';
+            await kpxc.initCombinations([ input ]);
+            await kpxcIcons.initIcons(kpxc.combinations);
+            await kpxcIcons.initIcons(kpxc.combinations);
+            return { before, hidden, after: window.totpStats(),
+                recognized: kpxc.combinations[0]?.totp === input,
+            };
+        });
+        expect(errors).toEqual([]);
+        for (const stats of [ result.before, result.after ]) {
+            expect(stats.icons).toBe(1);
+            expect(stats.descriptors).toBe(1);
+            expect(stats.wrappers).toBe(1);
+            expect(stats.empty).toBe(true);
+        }
+        expect(result.hidden.icons).toBe(0);
+        expect(result.hidden.descriptors).toBe(0);
+        expect(result.hidden.wrappers).toBe(0);
+        expect(result.recognized).toBe(true);
+    } finally {
+        await page.evaluate(() => window.stopTotp());
+    }
+});

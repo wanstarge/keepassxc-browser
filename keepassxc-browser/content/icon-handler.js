@@ -14,7 +14,7 @@ kpxcIcons.iconTypes = {
 
 // Adds an icon to input field
 kpxcIcons.addIcon = async function(field, iconType) {
-    if (!field || !Object.values(kpxcIcons.iconTypes).includes(iconType)) {
+    if (!field || !Object.values(kpxcIcons.iconTypes).includes(iconType) || kpxcIcons.hasIcon(field)) {
         return;
     }
 
